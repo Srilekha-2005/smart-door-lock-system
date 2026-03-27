@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SafeLock – Keyboard Security System</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --surface3: #232840;
+    --accent: #c9a84c;
+    --accent2: #e8c97a;
+    --red: #e05252;
+    --green: #4caf7d;
+    --blue: #5b8dee;
+    --text: #e8eaf0;
+    --text2: #8a90a8;
+    --text3: #555d7a;
+    --border: #252b40;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Barlow', sans-serif;
+    --cond: 'Barlow Condensed', sans-serif;
+    --phone-w: 390px;
+    --phone-h: 844px;
+    --radius: 14px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #070810;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: var(--sans);
+    overflow: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(201,168,76,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,168,76,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: var(--phone-w);
+    height: var(--phone-h);
+    background: var(--bg);
+    border-radius: 44px;
+    border: 2px solid #2a2f45;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px #111,
+      0 40px 100px rgba(0,0,0,0.9),
+      0 0 60px rgba(201,168,76,0.06),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  /* Notch */
+  .notch {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 126px;
+    height: 34px;
+    background: #000;
+    border-radius: 0 0 20px 20px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .notch-cam { width: 10px; height: 10px; border-radius: 50%; background: #1a1a2e; border: 1.5px solid #333; }
+  .notch-mic { width: 36px; height: 5px; border-radius: 3px; background: #1a1a2e; border: 1.5px solid #333; }
+
+  /* Status bar */
+  .status-bar {
+    height: 50px;
+    padding: 14px 28px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 99;
+  }
+  .status-time { font-family: var(--mono); font-size: 13px; color: var(--text2); }
+  .status-icons { display: flex; gap: 6px; align-items: center; }
+  .status-icons svg { opacity: 0.6; }
+
+  /* Main content area */
+  .screen-wrap {
+    height: calc(var(--phone-h) - 50px - 90px);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+  .screen.active { opacity: 1; pointer-events: all; }
+
+  /* ───── SHARED COMPONENTS ───── */
+  .page-header {
+    padding: 20px 24px 12px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .page-title {
+    font-family: var(--cond);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .page-sub {
+    font-size: 12px;
+    color: var(--text3);
+    font-weight: 400;
+    margin-top: 1px;
+    letter-spacing: 0.3px;
+  }
+  .header-icon {
+    width: 40px; height: 40px;
+    background: var(--surface2);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  /* ───── HOME SCREEN ───── */
+  #home {
+    padding-bottom: 20px;
+  }
+
+  .home-hero {
+    margin: 12px 24px 0;
+    background: linear-gradient(135deg, #1a1e2e 0%, #0f1220 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .home-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 140px; height: 140px;
+    background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%);
+  }
+  .lock-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .lock-label {
+    font-family: var(--cond);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .lock-state {
+    font-family: var(--cond);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--red);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .lock-state.unlocked { color: var(--green); }
+  .lock-state-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+  .lock-icon-big {
+    width: 64px; height: 64px;
+    border-radius: 16px;
+    background: rgba(224,82,82,0.12);
+    border: 1px solid rgba(224,82,82,0.25);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+  }
+  .lock-icon-big.unlocked {
+    background: rgba(76,175,125,0.12);
+    border-color: rgba(76,175,125,0.25);
+  }
+  .lock-meta {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 24px;
+  }
+  .lock-meta-item { }
+  .lock-meta-label { font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .lock-meta-val { font-family: var(--mono); font-size: 13px; color: var(--text2); }
+
+  /* OTP Section */
+  .section-label {
+    font-family: var(--cond);
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    color: var(--text3);
+    text-transform: uppercase;
+    padding: 20px 24px 10px;
+  }
+  .otp-card {
+    margin: 0 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .otp-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .otp-btn {
+    background: linear-gradient(135deg, var(--accent) 0%, #a8722a 100%);
+    color: #0d0f14;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-family: var(--cond);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 16px rgba(201,168,76,0.3);
+  }
+  .otp-btn:active { transform: scale(0.96); }
+  .otp-display {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 46px;
+    transition: all 0.3s;
+  }
+  .otp-display.revealed {
+    border-color: rgba(201,168,76,0.4);
+    background: rgba(201,168,76,0.06);
+  }
+  .otp-code {
+    font-family: var(--mono);
+    font-size: 22px;
+    color: var(--accent2);
+    letter-spacing: 8px;
+    display: none;
+  }
+  .otp-placeholder {
+    font-size: 12px;
+    color: var(--text3);
+    font-style: italic;
+  }
+  .otp-timer {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    display: none;
+  }
+  .otp-hint {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text3);
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  /* Quick actions */
+  .quick-grid {
+    margin: 0 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .quick-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .quick-card:active { background: var(--surface2); }
+  .quick-card-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+  }
+  .quick-card-title {
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+  .quick-card-desc { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+  /* Alert banner */
+  .alert-banner {
+    margin: 0 24px;
+    background: rgba(224,82,82,0.1);
+    border: 1px solid rgba(224,82,82,0.3);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    animation: alert-pulse 3s ease infinite;
+  }
+  @keyframes alert-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(224,82,82,0.15); }
+    50% { box-shadow: 0 0 0 6px rgba(224,82,82,0); }
+  }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; animation: pulse-dot 1.5s infinite; }
+  .alert-text { font-size: 12px; color: #e8a0a0; line-height: 1.4; }
+  .alert-text strong { color: var(--red); font-weight: 600; display: block; font-size: 13px; font-family: var(--cond); letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* ───── COMMUNITY SCREEN ───── */
+  #community { padding-bottom: 20px; }
+
+  .member-card {
+    margin: 0 24px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+  }
+  .member-avatar {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--cond);
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .member-info { flex: 1; }
+  .member-name { font-family: var(--cond); font-size: 15px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.3px; }
+  .member-phone { font-family: var(--mono); font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .member-badge {
+    font-size: 9px;
+    font-family: var(--cond);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .badge-owner { background: rgba(201,168,76,0.15); color: var(--accent); border: 1px solid rgba(201,168,76,0.3); }
+  .badge-member { background: rgba(91,141,238,0.12); color: var(--blue); border: 1px solid rgba(91,141,238,0.25); }
+  .member-actions { display: flex; gap: 6px; margin-top: 0; align-items: center; }
+  .member-toggle {
+    width: 32px; height: 18px;
+    background: var(--green);
+    border-radius: 9px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .member-toggle.off { background: var(--surface3); }
+  .member-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 16px;
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .member-toggle.off::after { left: 2px; }
+
+  .add-btn {
+    margin: 4px 24px 0;
+    width: calc(100% - 48px);
+    background: transparent;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--text3);
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Modal */
+  .modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(7,8,16,0.9);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal-sheet {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px 24px 0 0;
+    padding: 20px 24px 40px;
+    width: 100%;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .modal-overlay.show .modal-sheet { transform: translateY(0); }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-family: var(--cond); font-size: 20px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 20px; }
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label { font-size: 11px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 6px; font-family: var(--cond); }
+  .modal-field input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .modal-field input:focus { border-color: var(--accent); }
+  .modal-field input::placeholder { color: var(--text3); }
+  .modal-save {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #a8722a);
+    color: #0d0f14;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-family: var(--cond);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 6px;
+    box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+  }
+
+  /* ───── ALERTS SCREEN ───── */
+  #alerts { padding-bottom: 20px; }
+
+  .alert-card {
+    margin: 0 24px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .alert-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .alert-card.critical::before { background: var(--red); }
+  .alert-card.warning::before { background: var(--accent); }
+  .alert-card.info::before { background: var(--blue); }
+
+  .alert-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .alert-card-title { font-family: var(--cond); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .alert-card.critical .alert-card-title { color: var(--red); }
+  .alert-card.warning .alert-card-title { color: var(--accent); }
+  .alert-card.info .alert-card-title { color: var(--blue); }
+  .alert-card-time { font-family: var(--mono); font-size: 10px; color: var(--text3); flex-shrink: 0; }
+  .alert-card-msg { font-size: 12px; color: var(--text2); margin-top: 4px; line-height: 1.5; }
+  .alert-card-loc { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-top: 8px; display: flex; align-items: center; gap: 5px; }
+
+  .notif-toggle-row {
+    margin: 0 24px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .notif-toggle-label { font-family: var(--cond); font-size: 13px; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
+  .notif-toggle-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .big-toggle {
+    width: 48px; height: 26px;
+    background: var(--green);
+    border-radius: 13px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .big-toggle.off { background: var(--surface3); }
+  .big-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 24px;
+    width: 20px; height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: left 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  }
+  .big-toggle.off::after { left: 3px; }
+
+  /* ───── LOG SCREEN ───── */
+  #log { padding-bottom: 20px; }
+
+  .log-stats {
+    margin: 0 24px 16px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .log-stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+  }
+  .log-stat-num {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 400;
+    display: block;
+  }
+  .log-stat-label { font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-top: 3px; display: block; font-family: var(--cond); }
+
+  .log-item {
+    margin: 0 24px 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .log-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .log-icon.success { background: rgba(76,175,125,0.12); }
+  .log-icon.fail { background: rgba(224,82,82,0.12); }
+  .log-icon.change { background: rgba(201,168,76,0.12); }
+  .log-details { flex: 1; }
+  .log-event { font-family: var(--cond); font-size: 13px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.3px; }
+  .log-who { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .log-time { font-family: var(--mono); font-size: 10px; color: var(--text3); text-align: right; flex-shrink: 0; }
+
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    padding: 0 24px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-family: var(--cond);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    color: var(--text3);
+    background: var(--surface);
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .filter-chip.active { background: var(--accent); color: #0d0f14; border-color: var(--accent); }
+
+  /* ───── BOTTOM NAV ───── */
+  .bottom-nav {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 90px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    padding-top: 10px;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: opacity 0.15s;
+  }
+  .nav-icon {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .nav-item.active .nav-icon { background: rgba(201,168,76,0.15); }
+  .nav-label {
+    font-family: var(--cond);
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text3);
+    transition: color 0.2s;
+  }
+  .nav-item.active .nav-label { color: var(--accent); }
+  .nav-badge {
+    position: absolute;
+    top: -4px; right: -4px;
+    width: 16px; height: 16px;
+    background: var(--red);
+    border-radius: 50%;
+    font-size: 9px;
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    border: 1.5px solid var(--surface);
+  }
+  .nav-icon-wrap { position: relative; }
+
+  /* Scan line animation on home */
+  .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent);
+    animation: scan 3s linear infinite;
+    opacity: 0;
+  }
+  .home-hero:hover .scan-line { opacity: 1; }
+  @keyframes scan {
+    0% { top: 0; }
+    100% { top: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <!-- Notch -->
+  <div class="notch">
+    <div class="notch-mic"></div>
+    <div class="notch-cam"></div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span class="status-time">09:41</span>
+    <div class="status-icons">
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+        <rect x="0" y="3" width="3" height="9" rx="1" fill="#8a90a8"/>
+        <rect x="4.5" y="2" width="3" height="10" rx="1" fill="#8a90a8"/>
+        <rect x="9" y="0" width="3" height="12" rx="1" fill="#8a90a8"/>
+        <rect x="13.5" y="0" width="2.5" height="12" rx="1" fill="#8a90a8" opacity="0.3"/>
+      </svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+        <path d="M8 2.5C10.5 2.5 12.7 3.7 14.1 5.6L15.5 4.2C13.7 2 11 0.8 8 0.8C5 0.8 2.3 2 0.5 4.2L1.9 5.6C3.3 3.7 5.5 2.5 8 2.5Z" fill="#8a90a8"/>
+        <path d="M8 5.5C9.8 5.5 11.4 6.3 12.5 7.6L13.9 6.2C12.4 4.6 10.3 3.7 8 3.7C5.7 3.7 3.6 4.6 2.1 6.2L3.5 7.6C4.6 6.3 6.2 5.5 8 5.5Z" fill="#8a90a8"/>
+        <circle cx="8" cy="10" r="1.5" fill="#8a90a8"/>
+      </svg>
+      <svg width="25" height="12" viewBox="0 0 25 12" fill="none">
+        <rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="#8a90a8" stroke-opacity="0.5"/>
+        <rect x="2" y="2" width="16" height="8" rx="2" fill="#8a90a8"/>
+        <path d="M23 4v4a2 2 0 000-4z" fill="#8a90a8" opacity="0.4"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Screens -->
+  <div class="screen-wrap">
+
+    <!-- HOME -->
+    <div id="home" class="screen active">
+      <div class="page-header">
+        <div class="header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+          </svg>
+        </div>
+        <div>
+          <div class="page-title">SafeLock</div>
+          <div class="page-sub">Arduino Keypad Security System</div>
+        </div>
+      </div>
+
+      <!-- Alert banner -->
+      <div style="padding: 0 0 12px;">
+        <div class="alert-banner" onclick="switchTab('alerts')">
+          <div class="alert-dot"></div>
+          <div class="alert-text">
+            <strong>⚠ Fraud Alert Active</strong>
+            3 failed attempts detected — 2 min ago
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e05252" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+
+      <!-- Lock Status Hero -->
+      <div class="home-hero">
+        <div class="scan-line"></div>
+        <div class="lock-status-row">
+          <div>
+            <div class="lock-label">Door Status</div>
+            <div class="lock-state" id="lockStateText">
+              <div class="lock-state-dot"></div>
+              LOCKED
+            </div>
+          </div>
+          <div class="lock-icon-big" id="lockIconBig">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#e05252" stroke-width="2" stroke-linecap="round">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0110 0v4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="lock-meta">
+          <div class="lock-meta-item">
+            <div class="lock-meta-label">Last Access</div>
+            <div class="lock-meta-val">09:12 AM</div>
+          </div>
+          <div class="lock-meta-item">
+            <div class="lock-meta-label">By</div>
+            <div class="lock-meta-val">RAVI</div>
+          </div>
+          <div class="lock-meta-item">
+            <div class="lock-meta-label">Attempts</div>
+            <div class="lock-meta-val" style="color:var(--red)">3 ✗</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OTP -->
+      <div class="section-label">One-Time Password</div>
+      <div class="otp-card">
+        <div class="otp-row">
+          <button class="otp-btn" onclick="generateOTP()">Generate OTP</button>
+          <div class="otp-display" id="otpDisplay">
+            <span class="otp-placeholder" id="otpPlaceholder">Press to generate</span>
+            <span class="otp-code" id="otpCode"></span>
+            <span class="otp-timer" id="otpTimer"></span>
+          </div>
+        </div>
+        <div class="otp-hint">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555d7a" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          OTP expires in 30 seconds · Share with trusted contacts only
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="section-label">Quick Access</div>
+      <div class="quick-grid">
+        <div class="quick-card" onclick="switchTab('community')">
+          <div class="quick-card-icon" style="background:rgba(91,141,238,0.12)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5b8dee" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          </div>
+          <div class="quick-card-title">Community</div>
+          <div class="quick-card-desc">3 members active</div>
+        </div>
+        <div class="quick-card" onclick="switchTab('log')">
+          <div class="quick-card-icon" style="background:rgba(76,175,125,0.12)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4caf7d" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="quick-card-title">Access Log</div>
+          <div class="quick-card-desc">18 entries today</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMMUNITY -->
+    <div id="community" class="screen">
+      <div class="page-header">
+        <div class="header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5b8dee" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <div>
+          <div class="page-title">Community</div>
+          <div class="page-sub">Family lock access management</div>
+        </div>
+      </div>
+
+      <div class="section-label">Members (3)</div>
+
+      <div id="memberList">
+        <div class="member-card">
+          <div class="member-avatar" style="background:rgba(201,168,76,0.15);color:var(--accent)">R</div>
+          <div class="member-info">
+            <div class="member-name">Ravi Kumar</div>
+            <div class="member-phone">+91 98765 43210</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+            <span class="member-badge badge-owner">Owner</span>
+          </div>
+        </div>
+
+        <div class="member-card">
+          <div class="member-avatar" style="background:rgba(91,141,238,0.12);color:var(--blue)">P</div>
+          <div class="member-info">
+            <div class="member-name">Priya Kumar</div>
+            <div class="member-phone">+91 91234 56789</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+            <span class="member-badge badge-member">Member</span>
+            <div class="member-toggle" onclick="this.classList.toggle('off')"></div>
+          </div>
+        </div>
+
+        <div class="member-card">
+          <div class="member-avatar" style="background:rgba(76,175,125,0.12);color:var(--green)">A</div>
+          <div class="member-info">
+            <div class="member-name">Arjun Kumar</div>
+            <div class="member-phone">+91 87654 32109</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+            <span class="member-badge badge-member">Member</span>
+            <div class="member-toggle" onclick="this.classList.toggle('off')"></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="add-btn" onclick="openModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Family Member
+      </button>
+    </div>
+
+    <!-- ALERTS -->
+    <div id="alerts" class="screen">
+      <div class="page-header">
+        <div class="header-icon" style="border-color:rgba(224,82,82,0.3)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e05252" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div>
+          <div class="page-title">Security Alerts</div>
+          <div class="page-sub">Real-time fraud & intrusion detection</div>
+        </div>
+      </div>
+
+      <!-- Notification toggle -->
+      <div class="section-label">Notifications</div>
+      <div class="notif-toggle-row">
+        <div>
+          <div class="notif-toggle-label">Push Alerts</div>
+          <div class="notif-toggle-sub">Fraudulent activity notifications</div>
+        </div>
+        <div class="big-toggle" onclick="this.classList.toggle('off')"></div>
+      </div>
+      <div class="notif-toggle-row" style="margin-top:-4px">
+        <div>
+          <div class="notif-toggle-label">SMS Alerts</div>
+          <div class="notif-toggle-sub">Send to all community members</div>
+        </div>
+        <div class="big-toggle" onclick="this.classList.toggle('off')"></div>
+      </div>
+
+      <div class="section-label">Recent Alerts</div>
+
+      <div class="alert-card critical">
+        <div class="alert-card-top">
+          <div class="alert-card-title">⚠ Brute Force Detected</div>
+          <div class="alert-card-time">09:39 AM</div>
+        </div>
+        <div class="alert-card-msg">3 consecutive wrong PINs entered in 45 seconds. Lock temporarily suspended.</div>
+        <div class="alert-card-loc">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Front Door · Arduino ID: #A1F3
+        </div>
+      </div>
+
+      <div class="alert-card warning">
+        <div class="alert-card-top">
+          <div class="alert-card-title">⚡ Unknown PIN Attempt</div>
+          <div class="alert-card-time">08:55 AM</div>
+        </div>
+        <div class="alert-card-msg">Unrecognized 4-digit PIN entered. Not matching any stored credentials.</div>
+        <div class="alert-card-loc">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Front Door · Arduino ID: #A1F3
+        </div>
+      </div>
+
+      <div class="alert-card warning">
+        <div class="alert-card-top">
+          <div class="alert-card-title">⏱ OTP Expired Unused</div>
+          <div class="alert-card-time">Yesterday</div>
+        </div>
+        <div class="alert-card-msg">A generated OTP (****) expired without being used within 30-second window.</div>
+        <div class="alert-card-loc">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Front Door · Arduino ID: #A1F3
+        </div>
+      </div>
+
+      <div class="alert-card info">
+        <div class="alert-card-top">
+          <div class="alert-card-title">ℹ Password Changed</div>
+          <div class="alert-card-time">2 days ago</div>
+        </div>
+        <div class="alert-card-msg">Master PIN was updated by owner Ravi Kumar via keypad interface.</div>
+        <div class="alert-card-loc">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Front Door · Arduino ID: #A1F3
+        </div>
+      </div>
+    </div>
+
+    <!-- LOG -->
+    <div id="log" class="screen">
+      <div class="page-header">
+        <div class="header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4caf7d" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div>
+          <div class="page-title">Access Log</div>
+          <div class="page-sub">All entry & exit attempts</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="log-stats">
+        <div class="log-stat">
+          <span class="log-stat-num" style="color:var(--green)">15</span>
+          <span class="log-stat-label">Granted</span>
+        </div>
+        <div class="log-stat">
+          <span class="log-stat-num" style="color:var(--red)">3</span>
+          <span class="log-stat-label">Denied</span>
+        </div>
+        <div class="log-stat">
+          <span class="log-stat-num" style="color:var(--accent)">2</span>
+          <span class="log-stat-label">OTP Used</span>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="filter-row">
+        <div class="filter-chip active" onclick="setFilter(this)">All</div>
+        <div class="filter-chip" onclick="setFilter(this)">Granted</div>
+        <div class="filter-chip" onclick="setFilter(this)">Denied</div>
+        <div class="filter-chip" onclick="setFilter(this)">OTP</div>
+        <div class="filter-chip" onclick="setFilter(this)">Today</div>
+      </div>
+
+      <!-- Log entries -->
+      <div class="log-item">
+        <div class="log-icon success">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4caf7d" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="log-details">
+          <div class="log-event">Access Granted</div>
+          <div class="log-who">Ravi Kumar · PIN ••••</div>
+        </div>
+        <div class="log-time">09:12<br>AM</div>
+      </div>
+
+      <div class="log-item">
+        <div class="log-icon fail">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05252" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+        <div class="log-details">
+          <div class="log-event">Access Denied</div>
+          <div class="log-who">Unknown · Wrong PIN (3×)</div>
+        </div>
+        <div class="log-time">09:39<br>AM</div>
+      </div>
+
+      <div class="log-item">
+        <div class="log-icon success">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4caf7d" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="log-details">
+          <div class="log-event">OTP Access</div>
+          <div class="log-who">Priya Kumar · OTP ••••</div>
+        </div>
+        <div class="log-time">08:45<br>AM</div>
+      </div>
+
+      <div class="log-item">
+        <div class="log-icon success">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4caf7d" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="log-details">
+          <div class="log-event">Access Granted</div>
+          <div class="log-who">Arjun Kumar · PIN ••••</div>
+        </div>
+        <div class="log-time">08:30<br>AM</div>
+      </div>
+
+      <div class="log-item">
+        <div class="log-icon fail">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05252" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+        <div class="log-details">
+          <div class="log-event">Access Denied</div>
+          <div class="log-who">Unknown · Wrong PIN</div>
+        </div>
+        <div class="log-time">08:55<br>AM</div>
+      </div>
+
+      <div class="log-item">
+        <div class="log-icon change">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <div class="log-details">
+          <div class="log-event">PIN Changed</div>
+          <div class="log-who">Ravi Kumar · Keypad</div>
+        </div>
+        <div class="log-time">2<br>days</div>
+      </div>
+
+      <div class="log-item">
+        <div class="log-icon success">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4caf7d" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="log-details">
+          <div class="log-event">Access Granted</div>
+          <div class="log-who">Ravi Kumar · PIN ••••</div>
+        </div>
+        <div class="log-time">YDA<br>6PM</div>
+      </div>
+    </div>
+
+  </div><!-- end screen-wrap -->
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('home')" id="nav-home">
+      <div class="nav-icon-wrap">
+        <div class="nav-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+      </div>
+      <span class="nav-label">Home</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('community')" id="nav-community">
+      <div class="nav-icon-wrap">
+        <div class="nav-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a90a8" stroke-width="2" stroke-linecap="round">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+            <path d="M16 3.13a4 4 0 010 7.75"/>
+          </svg>
+        </div>
+      </div>
+      <span class="nav-label">Community</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('alerts')" id="nav-alerts">
+      <div class="nav-icon-wrap">
+        <div class="nav-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a90a8" stroke-width="2" stroke-linecap="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div class="nav-badge">3</div>
+      </div>
+      <span class="nav-label">Alerts</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('log')" id="nav-log">
+      <div class="nav-icon-wrap">
+        <div class="nav-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a90a8" stroke-width="2" stroke-linecap="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </div>
+      </div>
+      <span class="nav-label">Log</span>
+    </div>
+  </div>
+
+  <!-- Add Member Modal -->
+  <div class="modal-overlay" id="addModal" onclick="closeModalOutside(event)">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Add Family Member</div>
+      <div class="modal-field">
+        <label>Full Name</label>
+        <input type="text" id="newName" placeholder="e.g. Sunita Kumar">
+      </div>
+      <div class="modal-field">
+        <label>Phone Number</label>
+        <input type="tel" id="newPhone" placeholder="+91 XXXXX XXXXX">
+      </div>
+      <button class="modal-save" onclick="addMember()">Add Member</button>
+    </div>
+  </div>
+
+</div><!-- end phone -->
+
+<script>
+  // ── Tab switching ──
+  function switchTab(tab) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.classList.remove('active');
+      n.querySelector('svg').setAttribute('stroke', '#8a90a8');
+    });
+    document.getElementById(tab).classList.add('active');
+    const navEl = document.getElementById('nav-' + tab);
+    navEl.classList.add('active');
+    const colors = { home: '#c9a84c', community: '#5b8dee', alerts: '#e05252', log: '#4caf7d' };
+    navEl.querySelector('svg').setAttribute('stroke', colors[tab] || '#c9a84c');
+  }
+
+  // ── OTP Generation ──
+  let otpInterval = null;
+  function generateOTP() {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const display = document.getElementById('otpDisplay');
+    const otpCode = document.getElementById('otpCode');
+    const placeholder = document.getElementById('otpPlaceholder');
+    const timer = document.getElementById('otpTimer');
+
+    display.classList.add('revealed');
+    placeholder.style.display = 'none';
+    otpCode.style.display = 'block';
+    timer.style.display = 'block';
+    otpCode.textContent = code;
+
+    if (otpInterval) clearInterval(otpInterval);
+    let secs = 30;
+    timer.textContent = secs + 's';
+
+    otpInterval = setInterval(() => {
+      secs--;
+      timer.textContent = secs + 's';
+      if (secs <= 10) timer.style.color = '#e05252';
+      else timer.style.color = '#555d7a';
+      if (secs <= 0) {
+        clearInterval(otpInterval);
+        display.classList.remove('revealed');
+        otpCode.style.display = 'none';
+        timer.style.display = 'none';
+        placeholder.style.display = 'block';
+        placeholder.textContent = 'OTP expired';
+        setTimeout(() => placeholder.textContent = 'Press to generate', 2000);
+      }
+    }, 1000);
+  }
+
+  // ── Add Member ──
+  const avatarColors = [
+    { bg: 'rgba(224,82,82,0.12)', color: '#e05252' },
+    { bg: 'rgba(91,141,238,0.12)', color: '#5b8dee' },
+    { bg: 'rgba(76,175,125,0.12)', color: '#4caf7d' },
+    { bg: 'rgba(201,168,76,0.12)', color: '#c9a84c' },
+  ];
+  let memberCount = 3;
+
+  function openModal() {
+    document.getElementById('addModal').classList.add('show');
+  }
+  function closeModalOutside(e) {
+    if (e.target === document.getElementById('addModal')) closeModal();
+  }
+  function closeModal() {
+    document.getElementById('addModal').classList.remove('show');
+    document.getElementById('newName').value = '';
+    document.getElementById('newPhone').value = '';
+  }
+
+  function addMember() {
+    const name = document.getElementById('newName').value.trim();
+    const phone = document.getElementById('newPhone').value.trim();
+    if (!name) return;
+
+    const initial = name[0].toUpperCase();
+    const col = avatarColors[memberCount % avatarColors.length];
+
+    const card = document.createElement('div');
+    card.className = 'member-card';
+    card.style.animation = 'fadeIn 0.3s ease';
+    card.innerHTML = `
+      <div class="member-avatar" style="background:${col.bg};color:${col.color}">${initial}</div>
+      <div class="member-info">
+        <div class="member-name">${name}</div>
+        <div class="member-phone">${phone || 'No number'}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+        <span class="member-badge badge-member">Member</span>
+        <div class="member-toggle" onclick="this.classList.toggle('off')"></div>
+      </div>
+    `;
+    document.getElementById('memberList').appendChild(card);
+    memberCount++;
+    closeModal();
+  }
+
+  // ── Filter chips ──
+  function setFilter(el) {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // Real time clock
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2,'0');
+    const m = now.getMinutes().toString().padStart(2,'0');
+    document.querySelector('.status-time').textContent = h + ':' + m;
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+</script>
+</body>
+</html>
